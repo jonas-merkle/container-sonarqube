@@ -1,0 +1,64 @@
+version: '3'
+
+# service desciption
+services:
+
+  # sonarqube server
+  sonarqube-server:
+    image: sonarqube:community
+    container_name: sonarqube-server
+    hostname: sonarqube-server
+    restart: unless-stopped
+    depends_on:
+      - sonarqube-db-server
+    networks:
+      - traefik-net
+      - sonarqube-net
+    environment:
+      - SONAR_JDBC_URL=jdbc:postgresql://sonarqube-db-server:5432/sonar
+      - SONAR_JDBC_USERNAME=sonar
+      - SONAR_JDBC_PASSWORD=sonar
+    volumes:
+      - ./data/sonarqube/data:/opt/sonarqube/data
+      - ./data/sonarqube/extensions:/opt/sonarqube/extensions
+      - ./data/sonarqube/logs:/opt/sonarqube/logs
+    labels:
+      # enbale watchtower updates
+      - "com.centurylinklabs.watchtower.enable=true"
+      # enable traefik
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-net"
+      # https endpoint
+      - "traefik.http.routers.sonarqube-web-secure.entrypoints=websecure"
+      - "traefik.http.routers.sonarqube-web-secure.rule=HostHeader(`${SONARQUBE_CONT_URL}`)"
+      - "traefik.http.routers.sonarqube-web-secure.tls=true"
+      - "traefik.http.routers.sonarqube-web-secure.tls.certresolver=lets-encrypt"
+      - "traefik.http.routers.sonarqube-web-secure.service=sonarqube-service"
+      # services
+      - "traefik.http.services.sonarqube-service.loadbalancer.server.port=9000"
+
+  # sonarqube db server
+  sonarqube-db-server:
+    image: postgres:latest
+    container_name: sonarqube-db-server
+    hostname: sonarqube-db-server
+    restart: unless-stopped
+    networks:
+      - sonarqube-net
+    environment:
+      - POSTGRES_USER=sonar
+      - POSTGRES_PASSWORD=sonar
+      - POSTGRES_DB=sonar
+    volumes:
+      - ./data/db/data:/var/lib/postgresql/data
+
+# networks to use
+networks:
+
+  # traefik reverse proxy network
+  traefik-net:
+    external: true
+
+  # sonarqube server net
+  sonarqube-net:
+    driver: bridge

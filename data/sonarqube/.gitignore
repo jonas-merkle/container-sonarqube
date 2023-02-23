@@ -1,0 +1,11 @@
+conf/*
+data/*
+extensions/*
+logs/*
+
+
+!conf/sonar.properties
+!data/.gitkeep
+!extensions/.gitkeep
+!logs
+!logs/.gitkeep
